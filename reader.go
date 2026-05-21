@@ -7,57 +7,61 @@ import (
 	"strings"
 )
 
-// Classes and functions to read and interpret files
-
-type AOFResult[T any] struct {
-	line string
-	oper func(string) T
-	res T
+type Trem_ReadFileResult struct {
+	keyword string
+	inputs []string
+	callback func([]string) Trem_ReadFileResult
+	emsg error
+	result string
 }
 
-func (s *AOFResult[T]) _set_empty() {
-	s.line = ""
-	s.oper = func(_ string) T {return *new(T)}
-	s.res = *new(T)
-}
+func Trem_ReadFileResult_new(keyword string, inputs []string, callback func([]string) Trem_ReadFileResult, emsg error, result string) *Trem_ReadFileResult {
+	if callback == nil {callback = func([]string)Trem_ReadFileResult {return *Trem_ReadFileResult_new("", nil, nil, nil, "")}}
 
-func New_AOFResult[T any]() *AOFResult[T] {
-	res := new(AOFResult[T])
-	res._set_empty()
+	var res *Trem_ReadFileResult = new(Trem_ReadFileResult)
+	res.keyword = keyword
+	res.inputs = inputs
+	res.callback = callback
+	res.emsg = emsg
+	res.result = result
+
 	return res
 }
 
-func ActOnFile[T any](path string, delim string, funcmap map[string]func(string) T) ([]AOFResult[T], error) {
-	if len(path) < 1 	{return nil, errors.New("path is undefined")}
-	if len(funcmap) < 1 {return nil, errors.New("funcmap is empty/nil")}
+func (a *Trem_ReadFileResult) Compare(b Trem_ReadFileResult) bool {
+	if a.keyword != b.keyword {return false}
+	if a.result != b.result {return false}
+	if a.emsg != b.emsg {return false}
+	return true
+}
 
-	res := make([]AOFResult[T], 0);
-	filedata, err := os.Open(path)
-	if err != nil {return nil, errors.Join(errors.New("could not read file \"" + path + "\""), err)}
-	defer filedata.Close()
-	scanner := bufio.NewScanner(filedata)
+func (a *Trem_ReadFileResult) Deep_compare(b Trem_ReadFileResult) bool {
+	ares := a.callback(a.inputs)
+	bres := b.callback(b.inputs)
 
-	// Read file line by line, checking if the line starts with a keyword. If so, process it
-	for scanner.Scan() {
-		tmp := *New_AOFResult[T]()
-
-		tmp.line = scanner.Text()
-		lines := strings.Split(tmp.line, delim)
-		if len(lines) != 2 {
-			res = append(res, tmp)
-			continue
-		}
-
-		oper, exists := funcmap[lines[0]]
-		if !exists {
-			res = append(res, tmp)
-			continue
-		}
-		tmp.oper = oper
-
-		tmp.res = tmp.oper(tmp.line)
-		res = append(res, tmp)
+	if !ares.Compare(bres) {return false}
+	if len(ares.inputs) != len(bres.inputs) {return false}
+	for i := 0; i < len(ares.inputs); i++ {
+		if ares.inputs[i] != bres.inputs[i] {return false}
 	}
 
-	return res, nil;
+	return true
+}
+
+func Trem_ReadFile(file *os.File, funcmap map[string]func([]string) Trem_ReadFileResult) ([]Trem_ReadFileResult, error) {
+	if file == nil {return nil, errors.New("File is null")}
+	if funcmap == nil {return nil, errors.New("Funcmap is null")}
+
+	var res []Trem_ReadFileResult = make([]Trem_ReadFileResult, 0)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		text := scanner.Text()
+		tokens := strings.Split(text, "=")
+		if len(tokens) < 2 {continue} // No =, don't care about line contents
+
+		cb, ok := funcmap[tokens[0]]
+		if ok && cb != nil {res = append(res, cb(tokens))}
+	}
+
+	return res, nil
 }
