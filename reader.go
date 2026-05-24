@@ -7,18 +7,18 @@ import (
 	"strings"
 )
 
-type Trem_ReadFileResult struct {
+type ReadFileResult struct {
 	keyword string
 	inputs []string
-	callback func([]string) Trem_ReadFileResult
+	callback func([]string) ReadFileResult
 	emsg error
 	result string
 }
 
-func Trem_ReadFileResult_new(keyword string, inputs []string, callback func([]string) Trem_ReadFileResult, emsg error, result string) *Trem_ReadFileResult {
-	if callback == nil {callback = func([]string)Trem_ReadFileResult {return *Trem_ReadFileResult_new("", nil, nil, nil, "")}}
+func ReadFileResult_new(keyword string, inputs []string, callback func([]string) ReadFileResult, emsg error, result string) *ReadFileResult {
+	if callback == nil {callback = func([]string)ReadFileResult {return *ReadFileResult_new("", nil, nil, nil, "")}}
 
-	var res *Trem_ReadFileResult = new(Trem_ReadFileResult)
+	var res *ReadFileResult = new(ReadFileResult)
 	res.keyword = keyword
 	res.inputs = inputs
 	res.callback = callback
@@ -28,14 +28,14 @@ func Trem_ReadFileResult_new(keyword string, inputs []string, callback func([]st
 	return res
 }
 
-func (a *Trem_ReadFileResult) Compare(b Trem_ReadFileResult) bool {
+func (a *ReadFileResult) Compare(b ReadFileResult) bool {
 	if a.keyword != b.keyword {return false}
 	if a.result != b.result {return false}
 	if a.emsg != b.emsg {return false}
 	return true
 }
 
-func (a *Trem_ReadFileResult) Deep_compare(b Trem_ReadFileResult) bool {
+func (a *ReadFileResult) Deep_compare(b ReadFileResult) bool {
 	ares := a.callback(a.inputs)
 	bres := b.callback(b.inputs)
 
@@ -48,11 +48,11 @@ func (a *Trem_ReadFileResult) Deep_compare(b Trem_ReadFileResult) bool {
 	return true
 }
 
-func Trem_ReadFile(file *os.File, funcmap map[string]func([]string) Trem_ReadFileResult) ([]Trem_ReadFileResult, error) {
+func ReadFile(file *os.File, funcmap map[string]func([]string) ReadFileResult) ([]ReadFileResult, error) {
 	if file == nil {return nil, errors.New("File is null")}
 	if funcmap == nil {return nil, errors.New("Funcmap is null")}
 
-	var res []Trem_ReadFileResult = make([]Trem_ReadFileResult, 0)
+	var res []ReadFileResult = make([]ReadFileResult, 0)
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		text := scanner.Text()
