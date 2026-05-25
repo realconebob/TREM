@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -65,3 +66,59 @@ func ReadFile(file *os.File, funcmap map[string]func([]string) ReadFileResult) (
 
 	return res, nil
 }
+
+
+type RFResult int
+const (
+	EUNSPEC RFResult = iota
+	EUNKNOWN
+	ENOINPUTS
+	EINVALIDTYPE
+	OK
+	ETOOBIG
+)
+
+func RFResultToString(input RFResult) (string, bool) {
+	strings := map[RFResult]string{
+		EUNSPEC: "ERROR__ERROR_NOT_SPECIFIED",
+		EUNKNOWN: "ERROR__UNKNOWN",
+		ENOINPUTS: "ERROR__NOT_ENOUGH_INPUTS",
+		EINVALIDTYPE: "ERROR__INVALID_TYPE",
+		OK: "OK",
+		ETOOBIG: "ERROR__ERROR_TOO_BIG",
+	}
+
+	res, ok := strings[input]
+	return res, ok
+}
+
+func FMType(inputs []string) ReadFileResult {
+	var res ReadFileResult = ReadFileResult{
+		keyword: "",
+		inputs: inputs[:],
+		callback: FMType,
+		emsg: nil,
+		result: "",
+	}
+
+	if len(inputs) < 2 {
+		res.keyword, _ = RFResultToString(ENOINPUTS)
+		res.emsg = errors.New(res.keyword + ": inputs array too small. Expected: 2, Got: " + strconv.Itoa(len(inputs)))
+		return res
+	}
+
+	res.keyword = inputs[0]
+	if res.keyword != "config" && res.keyword != "reminder" {
+		ekey, _ := RFResultToString(EINVALIDTYPE)
+		res.emsg = errors.New(ekey + ": invalid type. Expected: config <OR> reminder. Got: " + res.keyword)
+		return res
+	}
+
+	// TODO: Figure out what to set in result
+
+	return res
+}
+
+func FMDirs(inputs []string) ReadFileResult
+func FMDate(inputs []string) ReadFileResult
+func FMReminder(inputs []string) ReadFileResult
