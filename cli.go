@@ -6,17 +6,41 @@ import (
 	"os"
 )
 
+type CommandIdx int
+const (
+	CIUNSPEC CommandIdx = iota
+	CIUNKNOWN
+	CIADD
+	CISET
+	CILIST
+	CITOOBIG
+)
+
+func CommandIdxToString(input CommandIdx) (string) {
+	strings := map[CommandIdx]string{
+		CIUNSPEC: "CommandIdx ERROR: Unspecified",
+		CIUNKNOWN: "CommandIdx ERROR: Unknown",
+		CIADD: "CommandIdx: Add",
+		CISET: "CommandIdx: Set",
+		CILIST: "CommandIdx: List",
+		CITOOBIG: "CommandIdx ERROR: Index OOB",
+	}
+
+	return strings[input]
+}
+
 type CLIRes struct {
 	args []string
+	command CommandIdx
 	err error
 }
 
 func isValidWord(in string, args []string) (func([]string) CLIRes, bool) {
 	var cres CLIRes = CLIRes{args: args}
 	var wordMap map[string]func([]string)CLIRes = map[string]func([]string)CLIRes{
-		"add": 	func([]string) CLIRes {print("got add\n"); return cres},
-		"set": 	func([]string) CLIRes {print("got set\n"); return cres},
-		"list": func([]string) CLIRes {print("got list\n"); return cres},
+		"add": 	func([]string) CLIRes {print("got add\n"); cres.command = CIADD; return cres},
+		"set": 	func([]string) CLIRes {print("got set\n"); cres.command = CISET; return cres},
+		"list": func([]string) CLIRes {print("got list\n"); cres.command = CILIST; return cres},
 	}
 
 	res, ok := wordMap[in]

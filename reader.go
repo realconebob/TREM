@@ -70,22 +70,22 @@ func ReadFile(file *os.File, funcmap map[string]func([]string) ReadFileResult) (
 
 type RFResult int
 const (
-	EUNSPEC RFResult = iota
-	EUNKNOWN
-	ENOINPUTS
-	EINVALIDTYPE
-	OK
-	ETOOBIG
+	RFREUNSPEC RFResult = iota
+	RFREUNKNOWN
+	RFRENOINPUTS
+	RFREINVALIDTYPE
+	RFROK
+	RFRETOOBIG
 )
 
 func RFResultToString(input RFResult) (string, bool) {
 	strings := map[RFResult]string{
-		EUNSPEC: "ERROR__ERROR_NOT_SPECIFIED",
-		EUNKNOWN: "ERROR__UNKNOWN",
-		ENOINPUTS: "ERROR__NOT_ENOUGH_INPUTS",
-		EINVALIDTYPE: "ERROR__INVALID_TYPE",
-		OK: "OK",
-		ETOOBIG: "ERROR__ERROR_TOO_BIG",
+		RFREUNSPEC: "ERROR__ERROR_NOT_SPECIFIED",
+		RFREUNKNOWN: "ERROR__UNKNOWN",
+		RFRENOINPUTS: "ERROR__NOT_ENOUGH_INPUTS",
+		RFREINVALIDTYPE: "ERROR__INVALID_TYPE",
+		RFROK: "OK",
+		RFRETOOBIG: "ERROR__ERROR_TOO_BIG",
 	}
 
 	res, ok := strings[input]
@@ -102,14 +102,14 @@ func FMType(inputs []string) ReadFileResult {
 	}
 
 	if len(inputs) < 2 {
-		res.keyword, _ = RFResultToString(ENOINPUTS)
+		res.keyword, _ = RFResultToString(RFRENOINPUTS)
 		res.emsg = errors.New(res.keyword + ": inputs array too small. Expected: 2, Got: " + strconv.Itoa(len(inputs)))
 		return res
 	}
 
 	res.keyword = inputs[0]
 	if res.keyword != "config" && res.keyword != "reminder" {
-		ekey, _ := RFResultToString(EINVALIDTYPE)
+		ekey, _ := RFResultToString(RFREINVALIDTYPE)
 		res.emsg = errors.New(ekey + ": invalid type. Expected: config <OR> reminder. Got: " + res.keyword)
 		return res
 	}
