@@ -119,6 +119,6 @@ func FMType(inputs []string) ReadFileResult {
 	return res
 }
 
-func FMDirs(inputs []string) ReadFileResult
-func FMDate(inputs []string) ReadFileResult
-func FMReminder(inputs []string) ReadFileResult
+func FMDirs(inputs []string) ReadFileResult {return ReadFileResult{}}
+func FMDate(inputs []string) ReadFileResult {return ReadFileResult{}}
+func FMReminder(inputs []string) ReadFileResult {return ReadFileResult{}}
