@@ -1,5 +1,7 @@
 package main
 
+// TODO: Consider whether this is necessary anymore with the new daemon code
+
 import (
 	"bufio"
 	"errors"
