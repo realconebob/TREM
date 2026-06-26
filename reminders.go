@@ -3,9 +3,10 @@ package main
 // reminders.go - Representation of a text reminder
 
 import (
+	"encoding/gob"
+	"bytes"
 	"time"
 	"os"
-	"encoding/gob"
 )
 
 type ReminderEntry struct {
@@ -39,7 +40,7 @@ func CreateReminderEntry_ByDate(layout, value, message string) (ReminderEntry, e
 	return CreateReminderEntry(parsed, message), nil
 }
 
-func SerializeRemindersToFile(reminders []ReminderEntry, path string) error {
+func SerializeRemindersToGobFile(reminders []ReminderEntry, path string) error {
 	file, err := os.Create(path)
 	if err != nil {return err}
 	defer file.Close()
@@ -51,4 +52,21 @@ func SerializeRemindersToFile(reminders []ReminderEntry, path string) error {
 	encoder := gob.NewEncoder(file)
 	if err := encoder.Encode(reminders); err != nil {return err}
 	return nil
+}
+
+func GetRemindersFromGob(data []byte) ([]ReminderEntry, error) {
+	decoder := gob.NewDecoder(bytes.NewReader(data))
+	var reminders []ReminderEntry
+
+	if err := decoder.Decode(&reminders); err != nil {
+		return []ReminderEntry{}, err
+	}
+
+	return reminders, nil
+}
+
+func GetRemindersFromGobFile(path string) ([]ReminderEntry, error) {
+	contents, err := os.ReadFile(path)
+	if err != nil {return []ReminderEntry{}, err}
+	return GetRemindersFromGob(contents)
 }
