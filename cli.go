@@ -1,5 +1,8 @@
 package main
 
+// cli.go - functions and structs dealing with the command line tool for interacting with tremd
+// TODO: Finish the daemon then revisit this mess
+
 import (
 	"errors"
 	_ "fmt"

@@ -9,57 +9,13 @@ import (
 	"time"
 )
 
-
-type ReminderEntry struct {
-	Registered time.Time 			`gob:"str"`
-	TriggerOn time.Time				`gob:"end"`
-	Message string					`gob:"msg"`
-	Triggered bool					`gob:"tgr"`
-	TriggerIfMissed bool			`gob:"mis"`
-
-	// TODO: Unsupported as of now. Also unoptimal packing/memory usage if left here
-	RepeatInterval time.Duration	`gob:"-"`
-	Repeat bool						`gob:"-"`
-}
-
-func CreateReminderEntry(triggerOn time.Time, message string) ReminderEntry {
-	return ReminderEntry{
-		Registered: time.Now(),
-		TriggerOn: triggerOn,
-		Message: message,
-		Triggered: false,
-		TriggerIfMissed: true,
-
-		Repeat: false,
-		RepeatInterval: 0,
-	}
-}
-
-func CreateReminderEntry_ByDate(layout, value, message string) (ReminderEntry, error) {
-	parsed, err := time.Parse(layout, value)
-	if err != nil {return ReminderEntry{}, err}
-	return CreateReminderEntry(parsed, message), nil
-}
-
-func SerializeRemindersToFile(reminders []ReminderEntry, path string) error {
-	file, err := os.Create(path)
-	if err != nil {return err}
-	defer file.Close()
-
-	encoder := gob.NewEncoder(file)
-	if err := encoder.Encode(reminders); err != nil {return err}
-	return nil
-}
-
-
 type TremDaemon struct {
 	Reminders []ReminderEntry
 	CurrentTime time.Time
-	PollingPeriod time.Duration
-	ReminderFile string
+	ReminderFile *WatchedFile
 }
 
-func CreateDaemonFromBuffer(data []byte, polling time.Duration) (TremDaemon, error) {
+func CreateDaemonFromBuffer(data []byte) (TremDaemon, error) {
 	decoder := gob.NewDecoder(bytes.NewReader(data))
 	var reminders []ReminderEntry
 
@@ -70,17 +26,28 @@ func CreateDaemonFromBuffer(data []byte, polling time.Duration) (TremDaemon, err
 	return TremDaemon{
 		Reminders: reminders,
 		CurrentTime: time.Now(),
-		PollingPeriod: polling,
-		ReminderFile: "",
+		ReminderFile: &WatchedFile{},
 	}, nil
 }
 
-func CreateDaemonFromFile(path string, polling time.Duration) (TremDaemon, error) {
+func CreateDaemonFromFile(path string, poll time.Duration) (TremDaemon, error) {
 	contents, err := os.ReadFile(path)
 	if err != nil {return TremDaemon{}, err}
 
-	// I could check for an error here, but there's not much point when the person running this function should check the error return value over the struct for indication of an error
-	res, err := CreateDaemonFromBuffer(contents, polling)
-	res.ReminderFile = path
-	return res, err
+	res, err := CreateDaemonFromBuffer(contents)
+	if err != nil {return TremDaemon{}, err}
+
+	file, err := GetFileWatch(path, poll)
+	if err != nil {return TremDaemon{}, err} // I could leave out this check by returning err, but I won't
+
+	res.ReminderFile = file
+	return res, nil
+}
+
+func (d *TremDaemon) Run() {
+	// The daemon should:
+		// *Get* populated with the current reminder file's reminders (This is not done by the daemon itself)
+		// Fire the reminders at their designated times, or immediately if the reminder time has passed and TriggerIfMissed is true
+		// Notice updates to the reminders file and update its list of reminders accordingly (without duplicating reminders!)
+		// Save its list of reminders to the reminders file before shutting down
 }
