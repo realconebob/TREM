@@ -9,52 +9,42 @@ import (
 	"os"
 )
 
-type CommandIdx int
+type TremCommand uint32
 const (
-	CIUNSPEC CommandIdx = iota
-	CIUNKNOWN
-	CIADD
-	CISET
-	CILIST
-	CITOOBIG
+	TC_UNSPEC TremCommand = iota
+	TC_UNKNOWN
+
+	TC_LIST
+	TC_ADD
+	TC_EDIT
+	TC_REMOVE
+
+	TC_TOOBIG
 )
 
-func CommandIdxToString(input CommandIdx) (string) {
-	strings := map[CommandIdx]string{
-		CIUNSPEC: "CommandIdx ERROR: Unspecified",
-		CIUNKNOWN: "CommandIdx ERROR: Unknown",
-		CIADD: "CommandIdx: Add",
-		CISET: "CommandIdx: Set",
-		CILIST: "CommandIdx: List",
-		CITOOBIG: "CommandIdx ERROR: Index OOB",
-	}
-
-	return strings[input]
-}
-
 type CLIRes struct {
-	args []string
-	command CommandIdx
+	command TremCommand
+	arguments []string
 	err error
 }
 
-func isValidWord(in string, args []string) (func([]string) CLIRes, bool) {
-	var cres CLIRes = CLIRes{args: args}
-	var wordMap map[string]func([]string)CLIRes = map[string]func([]string)CLIRes{
-		"add": 	func([]string) CLIRes {print("got add\n"); cres.command = CIADD; return cres},
-		"set": 	func([]string) CLIRes {print("got set\n"); cres.command = CISET; return cres},
-		"list": func([]string) CLIRes {print("got list\n"); cres.command = CILIST; return cres},
+func CreateCLIResFromArgs(command string, args []string) CLIRes {
+	var res CLIRes = CLIRes{arguments: args}
+	switch command {
+	case "add": 	res.command = TC_ADD
+	case "edit": 	res.command = TC_EDIT
+	case "list": 	res.command = TC_LIST
+	case "remove": 	res.command = TC_REMOVE
+	default:
+		res.err = errors.New("Unknown command \"" + command + "\"")
+		res.command = TC_UNKNOWN
 	}
 
-	res, ok := wordMap[in]
-	return res, ok
+	return res
 }
 
 func ProcCLIArgs() CLIRes {
 	if len(os.Args) < 2 {return CLIRes{err: errors.New("Too few CLI arguments")}}
 	workingArgs := os.Args[1:]
-	fp, ok := isValidWord(workingArgs[0], workingArgs)
-	if !ok {return CLIRes{err: errors.New(workingArgs[0] + " is not a valid operation")}}
-
-	return fp(workingArgs)
+	return CreateCLIResFromArgs(workingArgs[0], workingArgs[1:])
 }
