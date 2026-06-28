@@ -10,20 +10,23 @@ import (
 )
 
 type ReminderEntry struct {
-	Registered time.Time 			`gob:"str"`
-	TriggerOn time.Time				`gob:"end"`
-	Message string					`gob:"msg"`
-	Triggered bool					`gob:"tgr"`
-	TriggerIfMissed bool			`gob:"mis"`
+	Identifier 		uint64		`gob:"id"`
+	Registered		time.Time 	`gob:"str"`
+	TriggerOn		time.Time	`gob:"end"`
+	Message			string		`gob:"msg"`
+	Triggered		bool		`gob:"tgr"`
+	TriggerIfMissed	bool		`gob:"mis"`
 
 	// TODO: Unsupported as of now. Also unoptimal packing/memory usage if left here
-	RepeatInterval time.Duration	`gob:"-"`
-	Repeat bool						`gob:"-"`
+	RepeatInterval 	time.Duration	`gob:"-"`
+	Repeat 			bool			`gob:"-"`
 }
 
 func CreateReminderEntry(triggerOn time.Time, message string) ReminderEntry {
+	now := time.Now()
 	return ReminderEntry{
-		Registered: time.Now(),
+		Identifier: PseudoRandom(uint64(now.UnixNano())),
+		Registered: now,
 		TriggerOn: triggerOn,
 		Message: message,
 		Triggered: false,
@@ -38,6 +41,10 @@ func CreateReminderEntry_ByDate(layout, value, message string) (ReminderEntry, e
 	parsed, err := time.Parse(layout, value)
 	if err != nil {return ReminderEntry{}, err}
 	return CreateReminderEntry(parsed, message), nil
+}
+
+func (entryA ReminderEntry) Compare(entryB ReminderEntry) bool {
+	return (entryA.Identifier == entryB.Identifier) && (entryA.TriggerOn.Equal(entryB.TriggerOn))
 }
 
 func SerializeRemindersToGobFile(reminders []ReminderEntry, path string) error {

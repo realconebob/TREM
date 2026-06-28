@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"time"
+	"math"
 )
 
 func Filter[T any](slice []T, checker func(T) bool) []T {
@@ -21,6 +22,11 @@ func Filter[T any](slice []T, checker func(T) bool) []T {
 // even if it's trivial. ALSO why has go not implemented receivers on generics? That way the signature
 // could be "func (slice *[]T) Filter[T any](checker func(T) bool) *[]T"  could be written like
 // "(&[]int{1, 2, 3}).Filter(checker)" or "&sliceToFilter.Filter(checker)" instead of how it is now
+
+func PseudoRandom(feed uint64) uint64 {
+	return (feed * 10102007) ^ math.Float64bits(math.Exp(math.Float64frombits(feed))) ^ math.Float64bits(math.Pow(2, 0.5)) ^ feed
+}
+
 
 type WatchedFile struct {
 	Handle *os.File
