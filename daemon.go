@@ -8,7 +8,7 @@ import (
 
 type TremDaemon struct {
 	Reminders []ReminderEntry
-	Dispatched map[ReminderEntry]bool
+	Dispatched map[uint64]ReminderEntry
 	CurrentTime time.Time
 	ReminderFile *WatchedFile
 }
@@ -18,7 +18,7 @@ func CreateDaemonFromBuffer(data []byte) (TremDaemon, error) {
 
 	return TremDaemon{
 		Reminders: reminders,
-		Dispatched: make(map[ReminderEntry]bool, 0),
+		Dispatched: make(map[uint64]ReminderEntry, 0),
 		CurrentTime: time.Now(),
 		ReminderFile: &WatchedFile{},
 	}, err
@@ -33,7 +33,7 @@ func CreateDaemonFromFile(path string, poll time.Duration) (TremDaemon, error) {
 
 	return TremDaemon{
 		Reminders: reminders,
-		Dispatched: make(map[ReminderEntry]bool, 0),
+		Dispatched: make(map[uint64]ReminderEntry, 0),
 		CurrentTime: time.Now(),
 		ReminderFile: file,
 	}, nil
@@ -41,15 +41,8 @@ func CreateDaemonFromFile(path string, poll time.Duration) (TremDaemon, error) {
 
 func (d *TremDaemon) DispatchReminders() {
 	for _, reminder := range d.Reminders {
-		// This is terrible but I don't know of a better solution rn
-		var skip bool
-		for entry := range d.Dispatched {
-			if entry.Compare(reminder) {
-				skip = true
-				break // Note: Works as expected, only breaks this inner loop
-			}
-		}
-		if skip {continue}
+		if _, ok := d.Dispatched[reminder.Identifier]; ok {continue} // Much better
+		d.Dispatched[reminder.Identifier] = reminder
 
 		go func(cr *ReminderEntry){
 			time.Sleep(time.Until(cr.TriggerOn))
@@ -78,12 +71,6 @@ func (d *TremDaemon) UpdateReminders() error {
 
 	return nil
 }
-// Man, go's zero values gave me an awesome idea that I can't do within go (or maybe any language for that) matter. The idea is an
-// "Updatable" wrapper for any type. The wrapper would store any generic type and implement said generic type's signature through
-// delegation. Then the Updatable class would contain some flags and behaviors for accepting or rejecting updates to the held
-// generic. Say a "set once" flag that lets the value be set, but then further attempts to update it are ignored. That way, in
-// combination with go's nice zero values, I could basically just write the same function but remove all the "if err != nil"
-// statements littered in it and return the first error that came up. Alas, I must clutter my code
 
 func (d *TremDaemon) Shutdown() error {
 	rmpath := d.ReminderFile.Handle.Name()
@@ -100,8 +87,8 @@ func (d *TremDaemon) Run() {
 
 	defer d.Shutdown()
 
+	// Start watching the file from a goroutine
 	fileUpdate := make(chan bool)
-	// Start watching the file
 	go func(){
 		res, err := d.ReminderFile.CheckForUpdate()
 		if err != nil {panic("Could not check reminder file for updates")}
