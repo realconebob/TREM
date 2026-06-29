@@ -3,10 +3,11 @@ package main
 // reminders.go - Representation of a text reminder
 
 import (
-	"encoding/gob"
 	"bytes"
-	"time"
+	"encoding/gob"
+	"fmt"
 	"os"
+	"time"
 )
 
 type ReminderEntry struct {
@@ -45,6 +46,13 @@ func CreateReminderEntry_ByDate(layout, value, message string) (ReminderEntry, e
 
 func (entryA ReminderEntry) Compare(entryB ReminderEntry) bool {
 	return (entryA.Identifier == entryB.Identifier) && (entryA.TriggerOn.Equal(entryB.TriggerOn))
+}
+
+func (entry ReminderEntry) String() string {
+	return fmt.Sprintf(
+		"ReminderFile@%p{id: %v, registered: %v, triggeron: %v, message: %v, triggered: %v, tmissed: %v}",
+		&entry, entry.Identifier, entry.Registered, entry.TriggerOn, entry.Message, entry.Triggered, entry.TriggerIfMissed,
+	)
 }
 
 func SerializeRemindersToGobFile(reminders []ReminderEntry, path string) error {
