@@ -1,11 +1,14 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"time"
 )
 
-const DEFAULT_REMINDER_FILE string = "./REMINDER_FILE.test"
+const DEFAULT_REMINDER_FILE string = "./REMINDERFILE.test"
+const DEFAULT_DAEMON_FILE string = "./DAEMONFILE.test"
 
 func main() {
 	res := ProcCLIArgs()
@@ -17,6 +20,7 @@ func main() {
 	case TC_EDIT: 	err = EditReminder(DEFAULT_REMINDER_FILE, res.arguments)
 	case TC_LIST: 	err = ListReminders(DEFAULT_REMINDER_FILE, res.arguments)
 	case TC_REMOVE: err = RemoveReminder(DEFAULT_REMINDER_FILE, res.arguments)
+	case TC_DAEMON: err = CommandDaemon(DEFAULT_DAEMON_FILE, res.arguments)
 	default: 		err = res.err
 	}
 
@@ -30,11 +34,40 @@ func main() {
 
 func AddReminder(file string, args []string) error {
 	currentReminders, err := GetRemindersFromGobFile(file)
-	if err != nil {return err}
-	currentReminders = currentReminders // Shut go up for the time being
-	// TODO: Implement
+	if err != nil && !errors.Is(err, os.ErrNotExist) {return err}
 
-	return nil
+	layout := args[0]
+	switch layout {
+	case "Layout":		layout = time.Layout
+	case "ANSIC":		layout = time.ANSIC
+	case "UnixDate":	layout = time.UnixDate
+	case "RubyDate":	layout = time.RubyDate
+	case "RFC822":		layout = time.RFC822
+	case "RFC822Z":		layout = time.RFC822Z
+	case "RFC850":		layout = time.RFC850
+	case "RFC1123":		layout = time.RFC1123
+	case "RFC1123Z": 	layout = time.RFC1123Z
+	case "RFC3339":		layout = time.RFC3339
+	case "RFC3339Nano": layout = time.RFC3339Nano
+	case "Kitchen":		layout = time.Kitchen
+
+	case "Stamp":		layout = time.Stamp
+	case "StampMilli":	layout = time.StampMilli
+	case "StampMicro":	layout = time.StampMicro
+	case "StampNano":	layout = time.StampNano
+	case "DateTime":	layout = time.DateTime
+	case "DateOnly":	layout = time.DateOnly
+	case "TimeOnly":	layout = time.TimeOnly
+	} // Pulled straight from https://pkg.go.dev/time#Layout
+
+	// TODO: Make this more robust
+	datevalue := args[1]
+	message := args[2]
+	newReminder, err := CreateReminderEntry_ByDate(layout, datevalue, message)
+	if err != nil {return err}
+
+	currentReminders = append(currentReminders, newReminder)
+	return SerializeRemindersToGobFile(currentReminders, file)
 }
 func EditReminder(file string, args []string) error {
 	currentReminders, err := GetRemindersFromGobFile(file)
@@ -48,7 +81,7 @@ func ListReminders(file string, args []string) error {
 	reminders, err := GetRemindersFromGobFile(file)
 	if err != nil {return err}
 
-	for reminder := range reminders {
+	for _, reminder := range reminders {
 		fmt.Println(reminder)
 	}
 
@@ -61,4 +94,8 @@ func RemoveReminder(file string, args []string) error {
 	// TODO: Implement
 
 	return nil
+}
+
+func CommandDaemon(file string, args []string) error {
+	return errors.New("TODO: main::CommandDaemon is unimplemented")
 }
