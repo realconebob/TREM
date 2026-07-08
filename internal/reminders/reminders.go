@@ -3,7 +3,7 @@ package reminders
 // reminders.go - Representation of a text reminder
 
 import (
-	"github.com/realconebob/trem/internal"
+	misc "github.com/realconebob/trem/internal"
 
 	"bytes"
 	"encoding/gob"
@@ -40,7 +40,7 @@ func CreateEntry(triggerOn time.Time, message string) Entry {
 	}
 }
 
-func CreateEntry_ByDate(layout, value, message string) (Entry, error) {
+func CreateEntryByDate(layout, value, message string) (Entry, error) {
 	parsed, err := time.Parse(layout, value)
 	if err != nil {
 		return Entry{}, err

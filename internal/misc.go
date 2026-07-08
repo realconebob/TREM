@@ -23,6 +23,19 @@ func PseudoRandom(feed uint64) uint64 {
 	return (feed * 10102007) ^ math.Float64bits(math.Exp(math.Float64frombits(feed))) ^ math.Float64bits(math.Pow(2, 0.5)) ^ feed
 }
 
+type Comparable[T any] interface {
+	Compare(T) bool
+}
+
+func IsListEqual[T Comparable[T]](l1, l2 []T) bool {
+	if len(l1) != len(l2) {return false}
+	for idx := range l1 {
+		if !l1[idx].Compare(l2[idx]) {return false}
+	}
+
+	return true
+}
+
 type WatchedFile struct {
 	Handle          *os.File
 	LastStat        os.FileInfo
@@ -50,6 +63,7 @@ func GetFileWatch(path string, polling time.Duration) (*WatchedFile, error) {
 }
 
 func (watch *WatchedFile) Close() error {
+	if watch == nil {return errors.New("watch is nil")}
 	if watch.closed {
 		return nil
 	}
@@ -59,6 +73,7 @@ func (watch *WatchedFile) Close() error {
 }
 
 func (watch *WatchedFile) CheckForUpdate() (bool, error) {
+	if watch == nil {return false, errors.New("watch is nil")}
 	if watch.closed {
 		return false, errors.New("underlying file has been closed")
 	}
@@ -77,5 +92,6 @@ func (watch *WatchedFile) CheckForUpdate() (bool, error) {
 }
 
 func (watch *WatchedFile) Sleep() {
+	if watch == nil {return}
 	time.Sleep(watch.PollingInterval)
 }

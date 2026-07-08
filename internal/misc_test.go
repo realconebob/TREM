@@ -26,11 +26,38 @@ func Test_Filter(t *testing.T) {
 	}
 }
 
+type iwrap int
+func (i iwrap) Compare(incoming iwrap) bool {return i == incoming}
+
+func Test_IsListEqual(t *testing.T) {
+	l1, l2, l3, l4 := []iwrap{1, 2, 3}, []iwrap{1, 2, 3}, []iwrap{1, 3, 2}, []iwrap{1, 2}
+
+	if !IsListEqual(l1, l1) {t.Errorf("l1 and itself aren't equal when they should be")}
+	if !IsListEqual(l1, l2) {t.Errorf("l1 and l2 aren't equal when they should be")}
+	if  IsListEqual(l1, l3) {t.Errorf("l1 and l3 are equal when they shouldn't be")}
+	if  IsListEqual(l1, l4) {t.Errorf("l1 and l4 are equal when they shouldn't be")}
+
+	if !IsListEqual(l2, l2) {t.Errorf("l2 and itself aren't equal when they should be")}
+	if !IsListEqual(l2, l1) {t.Errorf("l2 and l1 aren't equal when they should be")}
+	if  IsListEqual(l2, l3) {t.Errorf("l2 and l3 are equal when they shouldn't be")}
+	if  IsListEqual(l2, l4) {t.Errorf("l2 and l4 are equal when they shouldn't be")}
+
+	if !IsListEqual(l3, l3) {t.Errorf("l3 and itself aren't equal when they should be")}
+	if  IsListEqual(l3, l1) {t.Errorf("l3 and l1 are equal when they shouldn't be")}
+	if  IsListEqual(l3, l2) {t.Errorf("l3 and l2 are equal when they shouldn't be")}
+	if  IsListEqual(l3, l4) {t.Errorf("l3 and l4 are equal when they shouldn't be")}
+
+	if !IsListEqual(l4, l4) {t.Errorf("l4 and itself aren't equal when they should be")}
+	if  IsListEqual(l4, l1) {t.Errorf("l4 and l1 are equal when they shouldn't be")}
+	if  IsListEqual(l4, l2) {t.Errorf("l4 and l2 are equal when they shouldn't be")}
+	if  IsListEqual(l4, l3) {t.Errorf("l4 and l3 are equal when they shouldn't be")}
+
+	// Checking every permutation is probably overkill for such a simple function, but hey it's something I can actually check
+}
+
 func Test_GetFileWatch(t *testing.T) {
 	// Test that GetFileWatch errors correctly, and that it can get a file to watch
-	dir, err := os.MkdirTemp("", "trem_testing-*")
-	if err != nil {t.Errorf("Could not create temp dir \"%v\": %v", dir, err)}
-
+	dir := t.TempDir()
 	dur, err := time.ParseDuration("5s")
 	if err != nil {t.Errorf("Could not create duration object: %v", err)}
 
@@ -40,14 +67,15 @@ func Test_GetFileWatch(t *testing.T) {
 	}
 
 	// Not sure how to write a test for the stat emitting an error
-
-	if err := os.RemoveAll(dir); err != nil {
-		fmt.Printf("Warning: Could not remove temp dir \"%v\": %v", dir, err)
-	}
 }
 
 func Test_WatchedFile_Close(t *testing.T) {
 	// Check that WatchedFile.Close doesn't break anything like an active write
+
+	var wf *WatchedFile = nil
+	if err := wf.Close(); err == nil {
+		t.Errorf("Didn't get an error when trying to close a nil WatchedFile pointer")
+	}
 
 	if err := (&WatchedFile{}).Close(); err == nil {
 		t.Errorf("Didn't get an error from closing an empty WatchedFile")
@@ -63,9 +91,17 @@ func Test_WatchedFile_Close(t *testing.T) {
 func Test_WatchedFile_CheckForUpdate(t *testing.T) {
 	// Check that a write gets properly noticed
 
+	var wf *WatchedFile = nil
+	if _, err := wf.CheckForUpdate(); err == nil {
+		t.Errorf("Didn't get an error when trying to check for an update on a nil WatchedFile pointer")
+	}
+
+	if _, err := (&WatchedFile{closed: true}).CheckForUpdate(); err == nil {
+		t.Errorf("Was able to check for an update on an already closed WatchedFile")
+	}
+
 	// Setup
-	dir, err := os.MkdirTemp("", "trem_testing-*")
-	if err != nil {t.Errorf("Could not create temp dir \"%v\": %v", dir, err)}
+	dir := t.TempDir()
 
 	dur1, err := time.ParseDuration("1s")
 	if err != nil {t.Errorf("Could not create duration object: %v", err)}

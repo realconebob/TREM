@@ -96,7 +96,7 @@ func AddReminder(file string, args []string) error {
 	// TODO: Make this more robust
 	datevalue := args[1]
 	message := args[2]
-	newReminder, err := reminders.CreateEntry_ByDate(layout, datevalue, message)
+	newReminder, err := reminders.CreateEntryByDate(layout, datevalue, message)
 	if err != nil {
 		return err
 	}
