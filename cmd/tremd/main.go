@@ -1,4 +1,4 @@
-package tremd
+package main
 
 func main() {
 
