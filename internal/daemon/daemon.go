@@ -1,39 +1,41 @@
-package main
+package daemon
 
-// daemon.go - Background service that interacts with trem. Reads the reminder file and executes a reminder when the time is reached
+// tremd.go - Background service that interacts with trem. Reads the reminder file and executes a reminder when the time is reached
 
 import (
+	"github.com/realconebob/trem/internal/reminders"
+	"github.com/realconebob/trem/internal"
 	"time"
 )
 
 type TremDaemon struct {
-	Reminders []ReminderEntry
-	Dispatched map[uint64]ReminderEntry
+	Reminders []reminders.Entry
+	Dispatched map[uint64]reminders.Entry
 	CurrentTime time.Time
-	ReminderFile *WatchedFile
+	ReminderFile *misc.WatchedFile
 }
 
 func CreateDaemonFromBuffer(data []byte) (TremDaemon, error) {
-	reminders, err := GetRemindersFromGob(data)
+	rems, err := reminders.GetFromGob(data)
 
 	return TremDaemon{
-		Reminders: reminders,
-		Dispatched: make(map[uint64]ReminderEntry, 0),
+		Reminders: rems,
+		Dispatched: make(map[uint64]reminders.Entry, 0),
 		CurrentTime: time.Now(),
-		ReminderFile: &WatchedFile{},
+		ReminderFile: &misc.WatchedFile{},
 	}, err
 }
 
 func CreateDaemonFromFile(path string, poll time.Duration) (TremDaemon, error) {
-	reminders, err := GetRemindersFromGobFile(path)
+	rems, err := reminders.GetFromGobFile(path)
 	if err != nil {return TremDaemon{}, err}
 
-	file, err := GetFileWatch(path, poll)
+	file, err := misc.GetFileWatch(path, poll)
 	if err != nil {return TremDaemon{}, err}
 
 	return TremDaemon{
-		Reminders: reminders,
-		Dispatched: make(map[uint64]ReminderEntry, 0),
+		Reminders: rems,
+		Dispatched: make(map[uint64]reminders.Entry, 0),
 		CurrentTime: time.Now(),
 		ReminderFile: file,
 	}, nil
@@ -44,7 +46,7 @@ func (d *TremDaemon) DispatchReminders() {
 		if _, ok := d.Dispatched[reminder.Identifier]; ok {continue} // Much better
 		d.Dispatched[reminder.Identifier] = reminder
 
-		go func(cr *ReminderEntry){
+		go func(cr *reminders.Entry){
 			time.Sleep(time.Until(cr.TriggerOn))
 			cr.Triggered = true
 			// TODO: Emit a notification or pop up an application or window with the reminder
@@ -65,7 +67,7 @@ func (d *TremDaemon) UpdateReminders() error {
 	if _, err := file.Read(buf); err != nil {return err}
 
 	// Update daemon with ReminderEntry-s from buffer
-	newReminders, err := GetRemindersFromGob(buf)
+	newReminders, err := reminders.GetFromGob(buf)
 	if err != nil {return err}
 	d.Reminders = newReminders
 
@@ -75,7 +77,7 @@ func (d *TremDaemon) UpdateReminders() error {
 func (d *TremDaemon) Shutdown() error {
 	rmpath := d.ReminderFile.Handle.Name()
 	d.ReminderFile.Close()
-	return SerializeRemindersToGobFile(d.Reminders, rmpath)
+	return reminders.SerializeToGobFile(d.Reminders, rmpath)
 }
 
 func (d *TremDaemon) Run() {
