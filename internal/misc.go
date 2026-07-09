@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// Returns a new array from the provided array, excluding any elements that checker returns false for
 func Filter[T any](slice []T, checker func(T) bool) []T {
 	var res []T = make([]T, 0)
 	for _, entry := range slice {
