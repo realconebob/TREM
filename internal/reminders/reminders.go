@@ -3,13 +3,12 @@ package reminders
 // reminders.go - Representation of a text reminder
 
 import (
-	misc "github.com/realconebob/trem/internal"
-
-	"bytes"
+	"github.com/realconebob/trem/internal"
 	"encoding/gob"
+	"bytes"
+	"time"
 	"fmt"
 	"os"
-	"time"
 )
 
 type Entry struct {

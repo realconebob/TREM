@@ -14,23 +14,8 @@ import (
 	"os"
 )
 
-type TremCommand uint32
-
-const (
-	TC_UNSPEC TremCommand = iota
-	TC_UNKNOWN
-
-	TC_LIST
-	TC_ADD
-	TC_EDIT
-	TC_REMOVE
-	TC_DAEMON
-
-	TC_TOOBIG
-)
-
 type CLIRes struct {
-	Command   TremCommand
+	Command   func(string,[]string)error
 	Arguments []string
 	Err       error
 }
@@ -38,14 +23,14 @@ type CLIRes struct {
 func CreateCLIResFromArgs(command string, args []string) CLIRes {
 	var res CLIRes = CLIRes{Arguments: args}
 	switch command {
-	case "add":		res.Command = TC_ADD
-	case "edit":	res.Command = TC_EDIT
-	case "list":	res.Command = TC_LIST
-	case "remove":	res.Command = TC_REMOVE
-	case "daemon":	res.Command = TC_DAEMON
+	case "add":		res.Command = AddReminder
+	case "edit":	res.Command = EditReminder
+	case "list":	res.Command = ListReminders
+	case "del":		res.Command = RemoveReminder
+	case "daemon":	res.Command = CommandDaemon
 	default:
 		res.Err = errors.New("Unknown command \"" + command + "\"")
-		res.Command = TC_UNKNOWN
+		res.Command = func(_ string, _ []string)error {return errors.New("Got unknown command from CreateCLIResFromArgs")}
 	}
 
 	return res
@@ -96,6 +81,8 @@ func LayoutNameToLayoutLiteral(name string) string {
 }
 
 func AddReminder(file string, args []string) error {
+	if l := len(args); l != 3 {return errors.New("Not enough arguments given. Expected: 3, Got: " + fmt.Sprint(l))}
+
 	currentReminders, err := reminders.GetFromGobFile(file)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
@@ -116,19 +103,22 @@ func AddReminder(file string, args []string) error {
 	return reminders.SerializeToGobFile(currentReminders, file)
 }
 
-func IndexReminder(rems *[]reminders.Entry, index uint64) (*reminders.Entry, error) {
+func IndexReminder(rems []reminders.Entry, index uint64) (*reminders.Entry, error) {
 	var toEdit *reminders.Entry = nil
-	if index >= uint64(len(*rems)) {
-		for _, rem := range *rems {
+	if index >= uint64(len(rems)) {
+		for _, rem := range rems {
 			if rem.Identifier == index {toEdit = &rem}
 		}
-	} else {toEdit = &(*rems)[index]}
+	} else {toEdit = &rems[index]}
 	if toEdit == nil {return nil, errors.New("Could not figure out which reminder to edit. Index: " + fmt.Sprint(index))}
 
 	return toEdit, nil
 }
 
 func EditReminder(file string, args []string) error {
+	// All operations require at least 3 arguments. The "time" operation needs 4
+	arglen := len(args); if arglen < 3 {return errors.New("Not enough arguments given")}
+
 	currentReminders, err := reminders.GetFromGobFile(file)
 	if err != nil {
 		return err
@@ -137,7 +127,7 @@ func EditReminder(file string, args []string) error {
 	index, err := strconv.ParseUint(args[0], 10, 0)
 	if err != nil {return err}
 
-	toEdit, err := IndexReminder(&currentReminders, index)
+	toEdit, err := IndexReminder(currentReminders, index)
 	if err != nil {return err}
 
 	// determine edit operation:
@@ -149,6 +139,7 @@ func EditReminder(file string, args []string) error {
 	switch args[1] {
 	case "time":
 		// use args[2] and args[3] to parse a new time value and update the trigger on time
+		if arglen < 4 {return errors.New("Not enough arguments given")}
 		layout, value := args[2], args[3]
 		if converted := LayoutNameToLayoutLiteral(layout); len(converted) > 0 {layout = converted}
 
@@ -195,7 +186,7 @@ func RemoveReminder(file string, args []string) error {
 	index, err := strconv.ParseUint(args[0], 10, 0)
 	if err != nil {return err}
 
-	toDel, err := IndexReminder(&currentReminders, index)
+	toDel, err := IndexReminder(currentReminders, index)
 	if err != nil {return err}
 
 	currentReminders = misc.Filter(currentReminders, func(entry reminders.Entry)bool {

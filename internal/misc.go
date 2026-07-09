@@ -5,8 +5,9 @@ package misc
 import (
 	"errors"
 	"math"
-	"os"
 	"time"
+	"fmt"
+	"os"
 )
 
 // Returns a new array from the provided array, excluding any elements that checker returns false for
@@ -22,6 +23,13 @@ func Filter[T any](slice []T, checker func(T) bool) []T {
 
 func PseudoRandom(feed uint64) uint64 {
 	return (feed * 10102007) ^ math.Float64bits(math.Exp(math.Float64frombits(feed))) ^ math.Float64bits(math.Pow(2, 0.5)) ^ feed
+}
+
+func PrintErrAndExit(err error, format string, a ...any) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, format, a...)
+		os.Exit(1)
+	}
 }
 
 type Comparable[T any] interface {

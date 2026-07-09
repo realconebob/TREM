@@ -1,12 +1,11 @@
 package reminders
 
 import (
-	"os"
-	"path"
-	"testing"
-	"time"
-
 	"github.com/realconebob/trem/internal"
+	"testing"
+	"path"
+	"time"
+	"os"
 )
 
 func Test_CreateEntry(t *testing.T) {

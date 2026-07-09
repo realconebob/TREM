@@ -1,6 +1,6 @@
 package daemon
 
-// tremd.go - Background service that interacts with trem. Reads the reminder file and executes a reminder when the time is reached
+// daemon.go - Background service that interacts with trem. Reads the reminder file and executes a reminder when the time is reached
 
 import (
 	"github.com/realconebob/trem/internal/reminders"
