@@ -88,12 +88,9 @@ func AddReminder(file string, args []string) error {
 		return err
 	}
 
-	layout := args[0]
+	layout, datevalue, message := args[0], args[1], args[2]
 	if converted := LayoutNameToLayoutLiteral(layout); len(converted) > 0 {layout = converted}
 
-	// TODO: Make this more robust
-	datevalue := args[1]
-	message := args[2]
 	newReminder, err := reminders.CreateEntryByDate(layout, datevalue, message)
 	if err != nil {
 		return err
@@ -120,9 +117,7 @@ func EditReminder(file string, args []string) error {
 	arglen := len(args); if arglen < 3 {return errors.New("Not enough arguments given")}
 
 	currentReminders, err := reminders.GetFromGobFile(file)
-	if err != nil {
-		return err
-	}
+	if err != nil {return err}
 
 	index, err := strconv.ParseUint(args[0], 10, 0)
 	if err != nil {return err}
@@ -183,15 +178,18 @@ func RemoveReminder(file string, args []string) error {
 		return err
 	}
 
-	index, err := strconv.ParseUint(args[0], 10, 0)
-	if err != nil {return err}
+	// TODO: This is gloriously horrible but implements removing multiple entries at once so it's fine for now
+	for idx := range args {
+		index, err := strconv.ParseUint(args[idx], 10, 0)
+		if err != nil {return err}
 
-	toDel, err := IndexReminder(currentReminders, index)
-	if err != nil {return err}
+		toDel, err := IndexReminder(currentReminders, index)
+		if err != nil {return err}
 
-	currentReminders = misc.Filter(currentReminders, func(entry reminders.Entry)bool {
-		return !toDel.Compare(entry)
-	})
+		currentReminders = misc.Filter(currentReminders, func(entry reminders.Entry)bool {
+			return !toDel.Compare(entry)
+		})
+	}
 
 	return reminders.SerializeToGobFile(currentReminders, file)
 }

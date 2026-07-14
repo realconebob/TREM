@@ -5,6 +5,7 @@ package daemon
 import (
 	"github.com/realconebob/trem/internal/reminders"
 	"github.com/realconebob/trem/internal"
+	"errors"
 	"time"
 )
 
@@ -12,7 +13,8 @@ type TremDaemon struct {
 	Reminders []reminders.Entry
 	Dispatched map[uint64]reminders.Entry
 	CurrentTime time.Time
-	ReminderFile *misc.WatchedFile
+	CommandFile *misc.WatchedFile
+	ReminderFile string
 }
 
 func CreateDaemonFromBuffer(data []byte) (TremDaemon, error) {
@@ -22,26 +24,29 @@ func CreateDaemonFromBuffer(data []byte) (TremDaemon, error) {
 		Reminders: rems,
 		Dispatched: make(map[uint64]reminders.Entry, 0),
 		CurrentTime: time.Now(),
-		ReminderFile: &misc.WatchedFile{},
+		CommandFile: &misc.WatchedFile{},
+		ReminderFile: "",
 	}, err
 }
 
-func CreateDaemonFromFile(path string, poll time.Duration) (TremDaemon, error) {
-	rems, err := reminders.GetFromGobFile(path)
+func CreateDaemonFromFile(cfile, rfile string, poll time.Duration) (TremDaemon, error) {
+	rems, err := reminders.GetFromGobFile(rfile)
 	if err != nil {return TremDaemon{}, err}
 
-	file, err := misc.GetFileWatch(path, poll)
+	watch, err := misc.GetFileWatch(cfile, poll)
 	if err != nil {return TremDaemon{}, err}
 
 	return TremDaemon{
 		Reminders: rems,
 		Dispatched: make(map[uint64]reminders.Entry, 0),
 		CurrentTime: time.Now(),
-		ReminderFile: file,
+		CommandFile: watch,
+		ReminderFile: rfile,
 	}, nil
 }
 
 func (d *TremDaemon) DispatchReminders() {
+	if d == nil {return}
 	for _, reminder := range d.Reminders {
 		if _, ok := d.Dispatched[reminder.Identifier]; ok {continue} // Much better
 		d.Dispatched[reminder.Identifier] = reminder
@@ -55,53 +60,55 @@ func (d *TremDaemon) DispatchReminders() {
 }
 
 func (d *TremDaemon) UpdateReminders() error {
-	// Get file contents to make buffer
-	file := d.ReminderFile.Handle
-	stat, err := file.Stat()
-	if err != nil {return err}
-
-	// Populate buffer
-	_, err = file.Seek(0, 0)
-	if err != nil {return err}
-	buf := make([]byte, stat.Size())
-	if _, err := file.Read(buf); err != nil {return err}
-
-	// Update daemon with ReminderEntry-s from buffer
-	newReminders, err := reminders.GetFromGob(buf)
+	if d == nil {return errors.New("d is nil")}
+	// Update daemon with ReminderEntry-s from file
+	newReminders, err := reminders.GetFromGobFile(d.ReminderFile)
 	if err != nil {return err}
 	d.Reminders = newReminders
 
 	return nil
 }
 
-func (d *TremDaemon) Shutdown() error {
-	rmpath := d.ReminderFile.Handle.Name()
-	d.ReminderFile.Close()
-	return reminders.SerializeToGobFile(d.Reminders, rmpath)
+func (d *TremDaemon) Close() error {
+	if d == nil {return errors.New("d is nil")}
+	d.CommandFile.Close()
+	return reminders.SerializeToGobFile(d.Reminders, d.ReminderFile)
+}
+
+func (d *TremDaemon) UpdateCommands() error {
+	if d == nil {return errors.New("d is nil")}
+	return errors.New("<TremDaemon::UpdateCommands> Error: Not Implemented")
+	// TODO: Implement
+}
+func (d *TremDaemon) RunCommands() error {
+	if d == nil {return errors.New("d is nil")}
+	return errors.New("<TremDaemon::RunCommands> Error: Not Implemented")
+	// TODO: Implement
 }
 
 func (d *TremDaemon) Run() {
+	if d == nil {panic("d is nil")}
 	// The daemon should:
 		// *Get* populated with the current reminder file's reminders (This is not done by the daemon itself)
 		// Fire the reminders at their designated times, or immediately if the reminder time has passed and TriggerIfMissed is true
 		// Notice updates to the reminders file and update its list of reminders accordingly (without duplicating reminders!)
 		// Save its list of reminders to the reminders file before shutting down
 
-	defer d.Shutdown()
+	defer d.Close()
 
 	// Start watching the file from a goroutine
 	fileUpdate := make(chan bool)
 	go func(){
-		res, err := d.ReminderFile.CheckForUpdate()
+		res, err := d.CommandFile.CheckForUpdate()
 		if err != nil {panic("Could not check reminder file for updates")}
 		if res {fileUpdate <- true}
-		time.Sleep(d.ReminderFile.PollingInterval)
+		d.CommandFile.Sleep()
 	}()
 
-	// Wait for file updates, update reminders accordingly
 	for {
 		<- fileUpdate
-		d.UpdateReminders()
-		d.DispatchReminders()
+		// TODO: Add error checking for these
+		d.UpdateCommands()
+		d.RunCommands()
 	}
 }
