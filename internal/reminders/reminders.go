@@ -3,12 +3,10 @@ package reminders
 // reminders.go - Representation of a text reminder
 
 import (
+	"github.com/realconebob/trem/internal/gobwrap"
 	"github.com/realconebob/trem/internal"
-	"encoding/gob"
-	"bytes"
 	"time"
 	"fmt"
-	"os"
 )
 
 type Entry struct {
@@ -20,8 +18,10 @@ type Entry struct {
 	TriggerIfMissed bool      `gob:"mis"`
 
 	// TODO: Unsupported as of now. Also unoptimal packing/memory usage if left here
-	RepeatInterval time.Duration `gob:"-"`
-	Repeat         bool          `gob:"-"`
+	RepeatInterval	time.Duration 	`gob:"-"`
+	RepeatToCount	uint			`gob:"-"`
+	RepeatCount		uint			`gob:"-"`
+	Repeat			bool          	`gob:"-"`
 }
 
 func CreateEntry(triggerOn time.Time, message string) Entry {
@@ -59,38 +59,19 @@ func (entry Entry) String() string {
 }
 
 func SerializeToGobFile(reminders []Entry, path string) error {
-	file, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	reminders = misc.Filter(reminders, func(entry Entry) bool {
+	return gobwrap.SerializeToGobFile(reminders, path, func(entry Entry) bool {
 		// Only include entries that have yet to be triggered
 		return entry.Triggered == false
 	})
-	encoder := gob.NewEncoder(file)
-	if err := encoder.Encode(reminders); err != nil {
-		return err
-	}
-	return nil
 }
 
 func GetFromGob(data []byte) ([]Entry, error) {
-	decoder := gob.NewDecoder(bytes.NewReader(data))
-	var reminders []Entry
-
-	if err := decoder.Decode(&reminders); err != nil {
-		return []Entry{}, err
-	}
-
-	return reminders, nil
+	return gobwrap.GetFromGob[Entry](data)
 }
 
 func GetFromGobFile(path string) ([]Entry, error) {
-	contents, err := os.ReadFile(path)
-	if err != nil {
-		return []Entry{}, err
-	}
-	return GetFromGob(contents)
+	return gobwrap.GetFromGobFile[Entry](path)
 }
+
+// TODO: With the inclusion of gobwrap, these functions are mostly redundant. I should retrofit old code
+// to use gobwrap, but I'm not bothing right now when there are more important things to do
