@@ -83,7 +83,7 @@ func LayoutNameToLayoutLiteral(name string) string {
 func AddReminder(file string, args []string) error {
 	if l := len(args); l != 3 {return errors.New("Not enough arguments given. Expected: 3, Got: " + fmt.Sprint(l))}
 
-	currentReminders, err := reminders.GetFromGobFile(file)
+	currentReminders, err := reminders.GetFromGobFile[reminders.Entry](file)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
@@ -97,7 +97,7 @@ func AddReminder(file string, args []string) error {
 	}
 
 	currentReminders = append(currentReminders, newReminder)
-	return reminders.SerializeToGobFile(currentReminders, file)
+	return reminders.SerializeToGobFile(currentReminders, file, reminders.GetReminderGobFilter())
 }
 
 func IndexReminder(rems []reminders.Entry, index uint64) (*reminders.Entry, error) {
@@ -116,7 +116,7 @@ func EditReminder(file string, args []string) error {
 	// All operations require at least 3 arguments. The "time" operation needs 4
 	arglen := len(args); if arglen < 3 {return errors.New("Not enough arguments given")}
 
-	currentReminders, err := reminders.GetFromGobFile(file)
+	currentReminders, err := reminders.GetFromGobFile[reminders.Entry](file)
 	if err != nil {return err}
 
 	index, err := strconv.ParseUint(args[0], 10, 0)
@@ -155,11 +155,11 @@ func EditReminder(file string, args []string) error {
 	default: return errors.New("Unrecognized edit directive: \"" + args[1] + "\"")
 	}
 
-	return reminders.SerializeToGobFile(currentReminders, file)
+	return reminders.SerializeToGobFile(currentReminders, file, reminders.GetReminderGobFilter())
 }
 
 func ListReminders(file string, args []string) error {
-	reminders, err := reminders.GetFromGobFile(file)
+	reminders, err := reminders.GetFromGobFile[reminders.Entry](file)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func ListReminders(file string, args []string) error {
 }
 
 func RemoveReminder(file string, args []string) error {
-	currentReminders, err := reminders.GetFromGobFile(file)
+	currentReminders, err := reminders.GetFromGobFile[reminders.Entry](file)
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func RemoveReminder(file string, args []string) error {
 		})
 	}
 
-	return reminders.SerializeToGobFile(currentReminders, file)
+	return reminders.SerializeToGobFile(currentReminders, file, reminders.GetReminderGobFilter())
 }
 
 func CommandDaemon(file string, args []string) error {

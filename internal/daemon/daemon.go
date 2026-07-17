@@ -6,57 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
 	"time"
 
 	"github.com/realconebob/trem/internal"
-	"github.com/realconebob/trem/internal/gobwrap"
 	"github.com/realconebob/trem/internal/reminders"
 )
-
-var defaultConf Config
-func init() {
-	var err error
-	defaultConf, err = GetDefaultConfig()
-	if err != nil {fmt.Fprintf(os.Stderr, "Could not get path to default config locations: %v", err)}
-}
-
-type CommandIdx uint8
-const (
-	UNSPEC CommandIdx = iota
-	RELOAD_REMINDERS
-	RELOAD_CONFIG
-	SAVE_REMINDERS
-	PAUSE
-	SHUTDOWN
-	UNKNOWN
-)
-type Command struct {
-	Behavior 	CommandIdx	`gob:"b"`
-	Path 		string		`gob:"p"`
-	executed 	bool		`gob:"e"`
-}
-
-type Config struct {
-	ReminderPath string
-	CommandPath string
-	ConfigPath string
-}
-
-func GetDefaultConfig() (Config, error) {
-	confdir, err := os.UserConfigDir()
-	if err != nil {return Config{}, err}
-
-	rems := path.Join(confdir, "trem", "reminders.gob")
-	cmds := path.Join(confdir, "trem", "commands.gob")
-	conf := path.Join(confdir, "trem", "tremrc")
-
-	return Config{
-		ReminderPath: rems,
-		CommandPath: cmds,
-		ConfigPath: conf,
-	}, nil
-}
 
 // Note: This struct is specifically for dealing with daemon state. Things not related to state belong in the config struct
 type Daemon struct {
@@ -69,7 +23,7 @@ type Daemon struct {
 }
 
 func CreateDaemonFromBuffer(data []byte) (Daemon, error) {
-	rems, err := reminders.GetFromGob(data)
+	rems, err := reminders.GetFromGob[reminders.Entry](data)
 
 	dfCopy := defaultConf
 	return Daemon{
@@ -81,7 +35,7 @@ func CreateDaemonFromBuffer(data []byte) (Daemon, error) {
 }
 
 func CreateDaemonFromFile(cmdfile, rfile string, poll time.Duration) (Daemon, error) {
-	rems, err := reminders.GetFromGobFile(rfile)
+	rems, err := reminders.GetFromGobFile[reminders.Entry](rfile)
 	if err != nil {return Daemon{}, err}
 
 	watch, err := misc.GetFileWatch(cmdfile, poll)
@@ -95,22 +49,6 @@ func CreateDaemonFromFile(cmdfile, rfile string, poll time.Duration) (Daemon, er
 		Dispatched: make(map[uint64]reminders.Entry, 0),
 		CommandFile: watch,
 	}, nil
-}
-
-func (d *Daemon) InterpretCommand(cmd *Command) error {
-	if d == nil {return errors.New("d is nil")}
-	cmd.executed = true
-	switch cmd.Behavior {
-	case RELOAD_REMINDERS: 	return d.ReloadReminders()
-	case RELOAD_CONFIG:		return d.ReloadConfig(cmd.Path)
-	case SAVE_REMINDERS:	return d.SaveReminders(cmd.Path)
-	case PAUSE:				return d.Pause()
-	case SHUTDOWN:			return d.Close()
-	case UNSPEC:			return errors.New("Unspecified command")
-
-	case UNKNOWN: 	fallthrough
-	default: 		return errors.New("Unknown command: " + fmt.Sprint(cmd.Behavior))
-	}
 }
 
 func (d *Daemon) DispatchReminders() {
@@ -132,7 +70,7 @@ func (d *Daemon) DispatchReminders() {
 func (d *Daemon) ReloadReminders() error {
 	if d == nil {return errors.New("d is nil")}
 	// Update daemon with ReminderEntry-s from file
-	newReminders, err := reminders.GetFromGobFile(d.Settings.ReminderPath)
+	newReminders, err := reminders.GetFromGobFile[reminders.Entry](d.Settings.ReminderPath)
 	if err != nil {return err}
 	d.Reminders = newReminders
 
@@ -145,28 +83,7 @@ func (d *Daemon) Close() error {
 
 	d.shutdown = true
 	d.CommandFile.Close()
-	return reminders.SerializeToGobFile(d.Reminders, d.Settings.ReminderPath)
-}
-
-// Really there should only be a single command in the command file queue at a time, but this can process more if need be
-func (d *Daemon) RunCommands() []error {
-	if d == nil {return []error{errors.New("d is nil")}}
-	// Read commands from command file, then interpret them
-	commands, err := gobwrap.GetFromGobFile[Command](d.Settings.CommandPath)
-	if err != nil {return []error{err}}
-
-	errs := make([]error, 0)
-	for _, command := range commands {
-		errs = append(errs, d.InterpretCommand(&command))
-	}
-
-	// Clear the file of executed commands
-	err = gobwrap.SerializeToGobFile(commands, d.Settings.CommandPath, func(cmd Command)bool {return !cmd.executed})
-	errs = append(errs, err)
-
-	errs = misc.Filter(errs, func(err error)bool {return err != nil})
-	if len(errs) <= 0 {return nil}
-	return errs
+	return reminders.SerializeToGobFile(d.Reminders, d.Settings.ReminderPath, reminders.GetReminderGobFilter())
 }
 
 func (d *Daemon) ReloadConfig(path string) error {
@@ -178,7 +95,7 @@ func (d *Daemon) ReloadConfig(path string) error {
 func (d *Daemon) SaveReminders(path string) error {
 	if d == nil {return errors.New("d is nil")}
 	if path == "" {path = d.Settings.ReminderPath}
-	return reminders.SerializeToGobFile(d.Reminders, path)
+	return reminders.SerializeToGobFile(d.Reminders, path, reminders.GetReminderGobFilter())
 }
 func (d *Daemon) Pause() error {
 	if d == nil {return errors.New("d is nil")}

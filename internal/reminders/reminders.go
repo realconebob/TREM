@@ -3,7 +3,6 @@ package reminders
 // reminders.go - Representation of a text reminder
 
 import (
-	"github.com/realconebob/trem/internal/gobwrap"
 	"github.com/realconebob/trem/internal"
 	"time"
 	"fmt"
@@ -58,20 +57,8 @@ func (entry Entry) String() string {
 	)
 }
 
-func SerializeToGobFile(reminders []Entry, path string) error {
-	return gobwrap.SerializeToGobFile(reminders, path, func(entry Entry) bool {
-		// Only include entries that have yet to be triggered
-		return entry.Triggered == false
-	})
+// Get the function used to filter reminder entries when serializing to a gob
+func GetReminderGobFilter() func(Entry)bool {
+	// Only include entries that have yet to be triggered
+	return func(entry Entry) bool {return entry.Triggered == false}
 }
-
-func GetFromGob(data []byte) ([]Entry, error) {
-	return gobwrap.GetFromGob[Entry](data)
-}
-
-func GetFromGobFile(path string) ([]Entry, error) {
-	return gobwrap.GetFromGobFile[Entry](path)
-}
-
-// TODO: With the inclusion of gobwrap, these functions are mostly redundant. I should retrofit old code
-// to use gobwrap, but I'm not bothing right now when there are more important things to do

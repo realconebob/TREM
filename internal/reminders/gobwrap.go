@@ -1,4 +1,4 @@
-package gobwrap
+package reminders
 
 import (
 	"github.com/realconebob/trem/internal"
