@@ -1,7 +1,6 @@
 package daemon
 
 import (
-	"github.com/realconebob/trem/internal/reminders"
 	"github.com/realconebob/trem/internal"
 	"errors"
 	"fmt"
@@ -43,7 +42,7 @@ func (d *Daemon) InterpretCommand(cmd *Command) error {
 func (d *Daemon) RunCommands() []error {
 	if d == nil {return []error{errors.New("d is nil")}}
 	// Read commands from command file, then interpret them
-	commands, err := reminders.GetFromGobFile[Command](d.Settings.CommandPath)
+	commands, err := misc.GetFromGobFile[Command](d.Settings.CommandPath)
 	if err != nil {return []error{err}}
 
 	errs := make([]error, 0)
@@ -52,7 +51,7 @@ func (d *Daemon) RunCommands() []error {
 	}
 
 	// Clear the file of executed commands
-	err = reminders.SerializeToGobFile(commands, d.Settings.CommandPath, func(cmd Command)bool {return !cmd.executed})
+	err = misc.SerializeToGobFile(commands, d.Settings.CommandPath, func(cmd Command)bool {return !cmd.executed})
 	errs = append(errs, err)
 
 	errs = misc.Filter(errs, func(err error)bool {return err != nil})

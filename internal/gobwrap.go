@@ -1,11 +1,19 @@
-package reminders
+package misc
 
 import (
-	"github.com/realconebob/trem/internal"
 	"encoding/gob"
 	"bytes"
 	"os"
+	"io"
 )
+
+func serializeToWriter[T any](writer io.Writer, entries []T, filter func(T)bool) error {
+	encoder := gob.NewEncoder(writer)
+	working := Filter(entries, filter)
+
+	if err := encoder.Encode(working); err != nil {return err}
+	return nil
+}
 
 func SerializeToGobFile[T any](entries []T, path string, filter func(T)bool) error {
 	file, err := os.Create(path)
@@ -14,12 +22,15 @@ func SerializeToGobFile[T any](entries []T, path string, filter func(T)bool) err
 	}
 	defer file.Close()
 
-	working := misc.Filter(entries, filter)
-	encoder := gob.NewEncoder(file)
-	if err := encoder.Encode(working); err != nil {
-		return err
-	}
-	return nil
+	return serializeToWriter(file, entries, filter)
+}
+
+func SerializeToBuffer[T any](entries []T, filter func(T)bool) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	err := serializeToWriter(buf, entries, filter)
+	if err != nil {return nil, err}
+
+	return buf.Bytes(), nil
 }
 
 func GetFromGob[T any](data []byte) ([]T, error) {

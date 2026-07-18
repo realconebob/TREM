@@ -23,7 +23,7 @@ type Daemon struct {
 }
 
 func CreateDaemonFromBuffer(data []byte) (Daemon, error) {
-	rems, err := reminders.GetFromGob[reminders.Entry](data)
+	rems, err := misc.GetFromGob[reminders.Entry](data)
 
 	dfCopy := defaultConf
 	return Daemon{
@@ -35,7 +35,7 @@ func CreateDaemonFromBuffer(data []byte) (Daemon, error) {
 }
 
 func CreateDaemonFromFile(cmdfile, rfile string, poll time.Duration) (Daemon, error) {
-	rems, err := reminders.GetFromGobFile[reminders.Entry](rfile)
+	rems, err := misc.GetFromGobFile[reminders.Entry](rfile)
 	if err != nil {return Daemon{}, err}
 
 	watch, err := misc.GetFileWatch(cmdfile, poll)
@@ -70,7 +70,7 @@ func (d *Daemon) DispatchReminders() {
 func (d *Daemon) ReloadReminders() error {
 	if d == nil {return errors.New("d is nil")}
 	// Update daemon with ReminderEntry-s from file
-	newReminders, err := reminders.GetFromGobFile[reminders.Entry](d.Settings.ReminderPath)
+	newReminders, err := misc.GetFromGobFile[reminders.Entry](d.Settings.ReminderPath)
 	if err != nil {return err}
 	d.Reminders = newReminders
 
@@ -83,7 +83,7 @@ func (d *Daemon) Close() error {
 
 	d.shutdown = true
 	d.CommandFile.Close()
-	return reminders.SerializeToGobFile(d.Reminders, d.Settings.ReminderPath, reminders.GetReminderGobFilter())
+	return misc.SerializeToGobFile(d.Reminders, d.Settings.ReminderPath, reminders.GetReminderGobFilter())
 }
 
 func (d *Daemon) ReloadConfig(path string) error {
@@ -95,7 +95,7 @@ func (d *Daemon) ReloadConfig(path string) error {
 func (d *Daemon) SaveReminders(path string) error {
 	if d == nil {return errors.New("d is nil")}
 	if path == "" {path = d.Settings.ReminderPath}
-	return reminders.SerializeToGobFile(d.Reminders, path, reminders.GetReminderGobFilter())
+	return misc.SerializeToGobFile(d.Reminders, path, reminders.GetReminderGobFilter())
 }
 func (d *Daemon) Pause() error {
 	if d == nil {return errors.New("d is nil")}

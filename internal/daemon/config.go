@@ -1,10 +1,14 @@
 package daemon
 
 import (
-	"os"
-	"fmt"
-	"path"
 	"errors"
+	"fmt"
+	"os"
+	"path"
+	"time"
+
+	"github.com/realconebob/trem/internal"
+	"github.com/realconebob/trem/internal/reminders"
 )
 
 var defaultConf Config
@@ -55,25 +59,49 @@ func GenerateDefaultConfig() []error {
 	var errs []error = nil
 	for i, name := range names {
 		file, err := os.Create(name)
-		if err != nil {errs = append(errs, err)}
+		if err == nil {defer file.Close()
+		} else {errs = append(errs, err)}
+
 		files[i] = file
 	}
-	if errs != nil {return errs}
+	if es := misc.NilErrSliceCheck(errs); es != nil {return es}
 
 	errs = append(errs, writeDefaultConfig(files[0]))
 	errs = append(errs, writeDefaultCommands(files[1]))
 	errs = append(errs, writeDefaultReminders(files[2]))
 
-	return errs
+	return misc.NilErrSliceCheck(errs)
+}
+func writeDefaultReminders(file *os.File) error {
+	if file == nil {return errors.New("file handle is nil")}
 
-	// TODO: There's probably a better way of doing error checking here
+	rem, err := reminders.CreateEntryByDate(time.UnixDate, "Thu Jul 4 00:00:00 EDT 2030", "Happy Independence Day! Don't blow your hand off")
+	if err != nil {return err}
+
+	buf, err := misc.SerializeToBuffer([]reminders.Entry{rem}, func(_ reminders.Entry)bool {return true})
+	if err != nil {return err}
+
+	_, err = file.Write(buf)
+	if err != nil {return err}
+
+	return nil
 }
-func writeDefaultReminders(*os.File) error {
-	return errors.New("TODO: Unimplemented")
+
+func writeDefaultCommands(file *os.File) error {
+	if file == nil {return errors.New("file handle is nil")}
+
+	cmd := Command{Behavior: RELOAD_REMINDERS}
+	buf, err := misc.SerializeToBuffer([]Command{cmd}, func(_ Command)bool{return true})
+	if err != nil {return err}
+
+	_, err = file.Write(buf)
+	if err != nil {return err}
+
+	return nil
 }
-func writeDefaultCommands(*os.File) error {
-	return errors.New("TODO: Unimplemented")
-}
-func writeDefaultConfig(*os.File) error {
-	return errors.New("TODO: Unimplemented")
+
+func writeDefaultConfig(file *os.File) error {
+	if file == nil {return errors.New("file handle is nil")}
+	_, err := fmt.Fprintf(file, "[trem]\nTODO = Write actual config here")
+	return err
 }

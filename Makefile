@@ -1,5 +1,5 @@
 SHELL = /usr/bin/env -S bash
-.PHONY: c clean r run t test b build
+.PHONY: b build c clean
 
 b build:
 	for file in ./cmd/*; do go build $$file; done

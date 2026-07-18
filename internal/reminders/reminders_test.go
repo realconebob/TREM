@@ -80,13 +80,13 @@ func Test_Serialize(t *testing.T) {
 		CreateEntry(time.Now().Add(5 * time.Minute), "Entry 2"),
 	}
 
-	if err := SerializeToGobFile(rems, name, GetReminderGobFilter()); err != nil {
+	if err := misc.SerializeToGobFile(rems, name, GetReminderGobFilter()); err != nil {
 		t.Errorf("Could not serialize reminders to gob file: %v", err)
 	}
 
 
 	// GetFromGobFile
-	rems2, err := GetFromGobFile[Entry](name)
+	rems2, err := misc.GetFromGobFile[Entry](name)
 	if err != nil {t.Errorf("Could not read reminders from gob: %v", err)}
 	if !misc.IsListEqual(rems, rems2) {t.Errorf("At least one of the entries in the rems array is no longer equal after serialization")}
 
@@ -94,7 +94,7 @@ func Test_Serialize(t *testing.T) {
 	data, err := os.ReadFile(name)
 	if err != nil {t.Errorf("Could not read from gob file: %v", err)}
 
-	rems3, err := GetFromGob[Entry](data)
+	rems3, err := misc.GetFromGob[Entry](data)
 	if err != nil {t.Errorf("Encountered an error while parsing the gob data: %v", err)}
 	if !misc.IsListEqual(rems, rems3) {t.Errorf("At least one of the entries in the rems array is no longer equal after serialization and manual decoding")}
 }
