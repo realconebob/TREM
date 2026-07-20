@@ -52,14 +52,12 @@ func CreateDaemonFromFile(cmdfile, rfile string, poll time.Duration) (Daemon, er
 }
 
 func (d *Daemon) DispatchReminders() {
-	if d == nil {return}
+	if d == nil || d.paused {return}
 	for _, reminder := range d.Reminders {
 		if _, ok := d.Dispatched[reminder.Identifier]; ok {continue} // Much better
 		d.Dispatched[reminder.Identifier] = reminder
 
 		go func(cr *reminders.Entry){
-			if d.paused {return} // Don't bother if the daemon is paused
-
 			time.Sleep(time.Until(cr.TriggerOn))
 			cr.Triggered = true
 			// TODO: Emit a notification or pop up an application or window with the reminder
@@ -88,9 +86,13 @@ func (d *Daemon) Close() error {
 
 func (d *Daemon) ReloadConfig(path string) error {
 	if d == nil {return errors.New("d is nil")}
+	if path == "" {path = d.Settings.ConfigPath}
 
-	// TODO:
-	panic("Unimplemented")
+	conf, err := GetConfigFromFile(path)
+	if err != nil {return err}
+
+	d.Settings = conf
+	return nil
 }
 func (d *Daemon) SaveReminders(path string) error {
 	if d == nil {return errors.New("d is nil")}

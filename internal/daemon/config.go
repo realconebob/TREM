@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/realconebob/trem/internal"
@@ -82,9 +83,7 @@ func writeDefaultReminders(file *os.File) error {
 	if err != nil {return err}
 
 	_, err = file.Write(buf)
-	if err != nil {return err}
-
-	return nil
+	return err
 }
 
 func writeDefaultCommands(file *os.File) error {
@@ -95,13 +94,49 @@ func writeDefaultCommands(file *os.File) error {
 	if err != nil {return err}
 
 	_, err = file.Write(buf)
-	if err != nil {return err}
-
-	return nil
+	return err
 }
 
 func writeDefaultConfig(file *os.File) error {
 	if file == nil {return errors.New("file handle is nil")}
 	_, err := fmt.Fprintf(file, "[trem]\nTODO = Write actual config here")
 	return err
+}
+
+func GetConfigFromFile(path string) (Config, error) {
+	contents, err := os.ReadFile(path)
+	if err != nil {return Config{}, err}
+	return ParseConfigBuffer(contents)
+}
+
+func ParseConfigBuffer(buf []byte) (Config, error) {
+	if buf == nil {return Config{}, errors.New("buf is nil")}
+	var res Config
+
+	// Convert to strings for ease of use
+	contents := string(buf[:])
+	lines := strings.Split(contents, "\n")
+
+	const CUTSET = " \n"
+	for idx, line := range lines {
+		trimmed := strings.Trim(line, CUTSET)
+		split := strings.Split(trimmed, "=")
+		if l := len(split); l < 2 {
+			if l > 0 {fmt.Fprintf(os.Stderr, "Warning - Line %v contains a keyword (%v), but no value", idx, split)}
+			continue
+		}
+
+		switch {
+		case idx == 0 && split[0] != "[trem]": return Config{}, errors.New("Config does not start with \"[trem]\" header")
+		case split[0] == "config":		res.ConfigPath 		= strings.Trim(split[1], CUTSET)
+		case split[0] == "commands":	res.CommandPath 	= strings.Trim(split[1], CUTSET)
+		case split[0] == "reminders":	res.ReminderPath 	= strings.Trim(split[1], CUTSET)
+
+		default: fmt.Fprintf(os.Stderr, "Warning - Encountered unknown keyword in config: %v", trimmed)
+		}
+	}
+
+	// TODO: Add some sanity checks
+
+	return res, nil
 }

@@ -45,7 +45,7 @@ func (d *Daemon) RunCommands() []error {
 	commands, err := misc.GetFromGobFile[Command](d.Settings.CommandPath)
 	if err != nil {return []error{err}}
 
-	errs := make([]error, 0)
+	var errs []error
 	for _, command := range commands {
 		errs = append(errs, d.InterpretCommand(&command))
 	}
@@ -54,7 +54,5 @@ func (d *Daemon) RunCommands() []error {
 	err = misc.SerializeToGobFile(commands, d.Settings.CommandPath, func(cmd Command)bool {return !cmd.executed})
 	errs = append(errs, err)
 
-	errs = misc.Filter(errs, func(err error)bool {return err != nil})
-	if len(errs) <= 0 {return nil}
-	return errs
+	return misc.NilErrSliceCheck(errs)
 }
