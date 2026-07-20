@@ -67,12 +67,13 @@ func GenerateDefaultConfig() []error {
 	}
 	if es := misc.NilErrSliceCheck(errs); es != nil {return es}
 
-	errs = append(errs, writeDefaultConfig(files[0]))
+	errs = append(errs, writeDefaultConfig(files[0], dconf))
 	errs = append(errs, writeDefaultCommands(files[1]))
 	errs = append(errs, writeDefaultReminders(files[2]))
 
 	return misc.NilErrSliceCheck(errs)
 }
+
 func writeDefaultReminders(file *os.File) error {
 	if file == nil {return errors.New("file handle is nil")}
 
@@ -97,9 +98,15 @@ func writeDefaultCommands(file *os.File) error {
 	return err
 }
 
-func writeDefaultConfig(file *os.File) error {
+func writeDefaultConfig(file *os.File, conf Config) error {
 	if file == nil {return errors.New("file handle is nil")}
-	_, err := fmt.Fprintf(file, "[trem]\nTODO = Write actual config here")
+	_, err := fmt.Fprintf(file,
+		"[trem]\n" +
+		"config = %v\n" +
+		"commands = %v\n" +
+		"reminders = %v\n",
+		conf.ConfigPath, conf.CommandPath, conf.ReminderPath,
+	)
 	return err
 }
 
@@ -121,18 +128,25 @@ func ParseConfigBuffer(buf []byte) (Config, error) {
 	for idx, line := range lines {
 		trimmed := strings.Trim(line, CUTSET)
 		split := strings.Split(trimmed, "=")
-		if l := len(split); l < 2 {
-			if l > 0 {fmt.Fprintf(os.Stderr, "Warning - Line %v contains a keyword (%v), but no value", idx, split)}
+		if l := len(split); l < 2 && idx > 0 {
+			// Note: You need to check that split[0] != "" because split doesn't return an empty slice, it returns a slice with an empty string - which look the same when printed >:[
+			if l > 0 && split[0] != "" {fmt.Fprintf(os.Stderr, "Warning - Line %v contains a keyword (%v), but no value\n", idx + 1, split)}
 			continue
 		}
 
+		for i, s := range split {
+			split[i] = strings.Trim(s, CUTSET)
+		}
+
 		switch {
+		case idx == 0 && split[0] == "[trem]": continue // Prevents the default case warning from triggering
 		case idx == 0 && split[0] != "[trem]": return Config{}, errors.New("Config does not start with \"[trem]\" header")
+
 		case split[0] == "config":		res.ConfigPath 		= strings.Trim(split[1], CUTSET)
 		case split[0] == "commands":	res.CommandPath 	= strings.Trim(split[1], CUTSET)
 		case split[0] == "reminders":	res.ReminderPath 	= strings.Trim(split[1], CUTSET)
 
-		default: fmt.Fprintf(os.Stderr, "Warning - Encountered unknown keyword in config: %v", trimmed)
+		default: fmt.Fprintf(os.Stderr, "Warning - Encountered unknown keyword in config: \"%v\". Ignoring...\n", trimmed)
 		}
 	}
 

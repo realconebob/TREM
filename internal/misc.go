@@ -48,7 +48,7 @@ func IsListEqual[T Comparable[T]](l1, l2 []T) bool {
 // Runs through a slice of errors to check if they're non-nil. If an entry is non-nil, it returns the list. Otherwise, returns nil
 func NilErrSliceCheck(eslice []error) []error {
 	for _, e := range eslice {
-		if e == nil {return eslice}
+		if e != nil {return eslice}
 	}
 	return nil
 }
