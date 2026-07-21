@@ -23,6 +23,20 @@ func Filter[T any](slice []T, checker func(T) bool) []T {
 
 func PseudoRandom(feed uint64) uint64 {
 	return (feed * 10102007) ^ math.Float64bits(math.Exp(math.Float64frombits(feed))) ^ math.Float64bits(math.Pow(2, 0.5)) ^ feed
+	// 1 Free beer to the first person to recognize the significance of 10-10-2007
+}
+
+// Returns a function that runs PseudoRandom on the prior seed. Seed can be modified by specifying extra uint64s
+func PseudoRandomIter(initial uint64) func(...uint64)uint64 {
+	capture := initial
+	return func(extra ...uint64)uint64 {
+		capture = PseudoRandom(capture)
+		for _, e := range extra {
+			capture = PseudoRandom(capture + e)
+		}
+
+		return capture
+	}
 }
 
 func PrintErrAndExit(err error, format string, a ...any) {

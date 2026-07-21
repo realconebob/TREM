@@ -26,9 +26,67 @@ func Test_GenerateDefaultConfig(t *testing.T) {
 	}
 }
 
+// TODO: Consider breaking into several other functions &/or inverting if statements for readability
 func Test_WriteDefaults(t *testing.T) {
 	// Test that writing the default config, reminders, and commands work as expected
-	t.Error("TODO: Implement")
+	dir := t.TempDir()
+	cmdpath := path.Join(dir, "commands.gob")
+	rempath := path.Join(dir, "reminders.gob")
+	cfgpath := path.Join(dir, "tremrc")
+
+	if cmds, err := os.Create(cmdpath); err == nil {
+		defer cmds.Close()
+		err = writeDefaultCommands(cmds)
+		if err != nil {
+			t.Errorf("Ran into an error while writing default command file")
+			return
+		}
+
+		// TODO: Do some sanity checking
+	} else {
+		t.Errorf("Could not create file \"%v\" for writing", cmdpath)
+		return
+	}
+
+	if rems, err := os.Create(rempath); err == nil {
+		defer rems.Close()
+		err = writeDefaultReminders(rems)
+		if err != nil {
+			t.Errorf("Ran into an error while writing default reminder file")
+			return
+		}
+
+		// TODO: Do some sanity checking
+	} else {
+		t.Errorf("Could not create file \"%v\" for writing", rempath)
+		return
+	}
+
+	dconf, err := GetDefaultConfig()
+	if err != nil {
+		t.Errorf("Could not get default config for writing")
+		return
+	}
+
+	if cfg, err := os.Create(cfgpath); err == nil {
+		defer cfg.Close()
+		err = writeDefaultConfig(cfg, dconf)
+		if err != nil {
+			t.Errorf("Ran into error while writing default config file")
+			return
+		}
+
+		conf, err := GetConfigFromFile(cfgpath)
+		if err != nil {
+			t.Errorf("Could not get config from file \"%v\"", cfgpath)
+			return
+		}
+		if !conf.Compare(dconf) {t.Errorf("conf from file doesn't match default config")}
+
+	} else {
+		t.Errorf("Could not create file \"%v\" for writing", cfgpath)
+		return
+	}
 }
 
 func Test_GetConfigFromFile(t *testing.T) {

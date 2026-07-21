@@ -24,6 +24,11 @@ type Config struct {
 	CommandPath string
 	ConfigPath string
 }
+
+func (cfg Config) Compare(other Config) bool {
+	return (cfg.CommandPath == other.CommandPath) && (cfg.ConfigPath == other.ConfigPath) && (cfg.ReminderPath == other.ReminderPath)
+}
+
 const CONFIG_FOLDER_NAME string = "trem"
 const CONFIG_REMINDER_NAME string = "reminders.gob"
 const CONFIG_COMMAND_NAME string = "commands.gob"
