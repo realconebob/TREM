@@ -34,58 +34,58 @@ func Test_WriteDefaults(t *testing.T) {
 	rempath := path.Join(dir, "reminders.gob")
 	cfgpath := path.Join(dir, "tremrc")
 
-	if cmds, err := os.Create(cmdpath); err == nil {
+	if cmds, err := os.Create(cmdpath); err != nil {
+		t.Errorf("Could not create file \"%v\" for writing: %v", cmdpath, err)
+		return
+	} else {
 		defer cmds.Close()
 		err = writeDefaultCommands(cmds)
 		if err != nil {
-			t.Errorf("Ran into an error while writing default command file")
+			t.Errorf("Ran into an error while writing default command file: %v", err)
 			return
 		}
 
 		// TODO: Do some sanity checking
-	} else {
-		t.Errorf("Could not create file \"%v\" for writing", cmdpath)
-		return
+
 	}
 
-	if rems, err := os.Create(rempath); err == nil {
+	if rems, err := os.Create(rempath); err != nil {
+		t.Errorf("Could not create file \"%v\" for writing: %v", rempath, err)
+		return
+	} else {
 		defer rems.Close()
 		err = writeDefaultReminders(rems)
 		if err != nil {
-			t.Errorf("Ran into an error while writing default reminder file")
+			t.Errorf("Ran into an error while writing default reminder file: %v", err)
 			return
 		}
 
 		// TODO: Do some sanity checking
-	} else {
-		t.Errorf("Could not create file \"%v\" for writing", rempath)
-		return
 	}
 
 	dconf, err := GetDefaultConfig()
 	if err != nil {
-		t.Errorf("Could not get default config for writing")
+		t.Errorf("Could not get default config for writing: %v", err)
 		return
 	}
 
-	if cfg, err := os.Create(cfgpath); err == nil {
+	if cfg, err := os.Create(cfgpath); err != nil {
+		t.Errorf("Could not create file \"%v\" for writing: %v", cfgpath, err)
+		return
+	} else {
 		defer cfg.Close()
 		err = writeDefaultConfig(cfg, dconf)
 		if err != nil {
-			t.Errorf("Ran into error while writing default config file")
+			t.Errorf("Ran into error while writing default config file: %v", err)
 			return
 		}
 
 		conf, err := GetConfigFromFile(cfgpath)
 		if err != nil {
-			t.Errorf("Could not get config from file \"%v\"", cfgpath)
+			t.Errorf("Could not get config from file \"%v\": %v", cfgpath, err)
 			return
 		}
 		if !conf.Compare(dconf) {t.Errorf("conf from file doesn't match default config")}
-
-	} else {
-		t.Errorf("Could not create file \"%v\" for writing", cfgpath)
-		return
 	}
 }
 

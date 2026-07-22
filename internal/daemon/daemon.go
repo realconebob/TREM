@@ -22,7 +22,7 @@ type Daemon struct {
 	shutdown bool
 }
 
-func CreateDaemonFromBuffer(data []byte) (Daemon, error) {
+func NewFromBuffer(data []byte) (Daemon, error) {
 	rems, err := misc.GetFromGob[reminders.Entry](data)
 
 	dfCopy := defaultConf
@@ -34,7 +34,7 @@ func CreateDaemonFromBuffer(data []byte) (Daemon, error) {
 	}, err
 }
 
-func CreateDaemonFromFile(cmdfile, rfile string, poll time.Duration) (Daemon, error) {
+func NewFromFile(cmdfile, rfile string, poll time.Duration) (Daemon, error) {
 	rems, err := misc.GetFromGobFile[reminders.Entry](rfile)
 	if err != nil {return Daemon{}, err}
 
@@ -45,6 +45,21 @@ func CreateDaemonFromFile(cmdfile, rfile string, poll time.Duration) (Daemon, er
 	dfCopy.ReminderPath = rfile
 	return Daemon{
 		Settings: dfCopy,
+		Reminders: rems,
+		Dispatched: make(map[uint64]reminders.Entry, 0),
+		CommandFile: watch,
+	}, nil
+}
+
+func NewFromConfig(conf Config, poll time.Duration) (Daemon, error) {
+	rems, err := misc.GetFromGobFile[reminders.Entry](conf.ReminderPath)
+	if err != nil {return Daemon{}, err}
+
+	watch, err := misc.GetFileWatch(conf.CommandPath, poll)
+	if err != nil {return Daemon{}, err}
+
+	return Daemon{
+		Settings: conf,
 		Reminders: rems,
 		Dispatched: make(map[uint64]reminders.Entry, 0),
 		CommandFile: watch,
