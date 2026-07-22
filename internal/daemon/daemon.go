@@ -133,10 +133,12 @@ func (d *Daemon) Run() {
 	// Start watching the file from a goroutine
 	fileUpdate := make(chan bool)
 	go func(){
-		res, err := d.CommandFile.CheckForUpdate()
-		if err != nil {panic("Could not check reminder file for updates")}
-		if res {fileUpdate <- true}
-		d.CommandFile.Sleep()
+		for {
+			res, err := d.CommandFile.CheckForUpdate()
+			if err != nil {panic("Could not check reminder file for updates")}
+			if res {fileUpdate <- true}
+			d.CommandFile.Sleep()
+		}
 	}()
 
 	for {
