@@ -1,9 +1,10 @@
 package daemon
 
 import (
-	"github.com/realconebob/trem/internal"
 	"errors"
 	"fmt"
+
+	"github.com/realconebob/trem/internal"
 )
 
 type CommandIdx uint8
@@ -22,6 +23,7 @@ type Command struct {
 	executed 	bool		`gob:"e"`
 }
 
+// TODO: Debug this. Currently it's not setting cmd.executed correctly
 func (d *Daemon) InterpretCommand(cmd *Command) error {
 	if d == nil {return errors.New("d is nil")}
 	cmd.executed = true
@@ -51,6 +53,7 @@ func (d *Daemon) RunCommands() []error {
 	}
 
 	// Clear the file of executed commands
+		// TODO: Debug this to see why executed commands aren't being cleared properly
 	err = misc.SerializeToGobFile(commands, d.Settings.CommandPath, func(cmd Command)bool {return !cmd.executed})
 	errs = append(errs, err)
 

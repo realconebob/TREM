@@ -1,19 +1,23 @@
 package main
 
 import (
-	"github.com/realconebob/trem/internal/cli"
-	"github.com/realconebob/trem/internal"
 	"os"
+
+	"github.com/realconebob/trem/internal"
+	"github.com/realconebob/trem/internal/cli"
+	"github.com/realconebob/trem/internal/daemon"
 )
 
-const DEFAULT_REMINDER_FILE string = "./REMINDERFILE.test"
-const DEFAULT_DAEMON_FILE string = "./DAEMONFILE.test"
+
 
 func main() {
+	conf, err := daemon.GetDefaultConfig()
+	misc.PrintErrAndExit(err, "Could not get default config: %v", err)
+
 	res := cli.ProcCLIArgs()
 	misc.PrintErrAndExit(res.Err, "Encountered an error: %v\n", res.Err)
 
-	err := res.Command(DEFAULT_REMINDER_FILE, res.Arguments) // Note: Daemon commands not implemented yet, so passing in only the default reminder is fine, but this does need to be fixed in the future
+	err = res.Command(misc.Ternary(res.IsDaemonCmd, conf.CommandPath, conf.ReminderPath), res.Arguments)
 	misc.PrintErrAndExit(err, "Could not process command: %v\n", err)
 
 	os.Exit(0)

@@ -145,9 +145,44 @@ func (d *Daemon) Run() {
 		if d.shutdown {break}
 		<- fileUpdate
 		// TODO: Add better error checking
+		fmt.Fprintf(os.Stdout, "Got update on command file! Processing...\n")
 		errs := d.RunCommands()
 		for _, err := range errs {
-			fmt.Fprintf(os.Stderr, "Warning - Could not process a command: %v", err)
+			fmt.Fprintf(os.Stderr, "Warning - Could not process a command: %v\n", err)
 		}
 	}
+}
+
+func Launch(args []string) int {
+	paths, err := GetDefaultConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not get default config location: %v", err)
+		return 1
+	}
+
+	conf, err := GetConfigFromFile(paths.ConfigPath)
+	if err != nil  {
+		fmt.Fprintf(os.Stderr, "Warning - Could not get config from file: %v. Generating defaults...\n", err)
+		errs := GenerateDefaultConfig()
+		errs = misc.NilErrSliceCheck(errs)
+		for _, e := range errs {
+			fmt.Fprintf(os.Stderr, "Encountered error while generating default config: %v\n", e)
+		}
+		if errs != nil {return 1}
+
+		conf, err = GetDefaultConfig()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not get config: %v\n", err)
+			return 1
+		}
+	}
+
+	daemon, err := NewFromConfig(conf, time.Second * 5)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Encountered error while creating daemon: %v\n", err)
+		return 1
+	}
+
+	daemon.Run()
+	return 0
 }

@@ -21,6 +21,12 @@ func Filter[T any](slice []T, checker func(T) bool) []T {
 	return res
 }
 
+// Returns v1 on true, v2 on false
+func Ternary[T any](cond bool, v1, v2 T) T {
+	if cond {return v1}
+	return v2
+}
+
 func PseudoRandom(feed uint64) uint64 {
 	return (feed * 10102007) ^ math.Float64bits(math.Exp(math.Float64frombits(feed))) ^ math.Float64bits(math.Pow(2, 0.5)) ^ feed
 	// 1 Free beer to the first person to recognize the significance of 10-10-2007

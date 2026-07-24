@@ -5,19 +5,22 @@ package cli
 // TODO TODO: See above. It's getting worse
 
 import (
-	"github.com/realconebob/trem/internal/reminders"
-	"github.com/realconebob/trem/internal"
-	"strconv"
 	"errors"
-	"time"
 	"fmt"
 	"os"
+	"strconv"
+	"time"
+
+	"github.com/realconebob/trem/internal"
+	"github.com/realconebob/trem/internal/daemon"
+	"github.com/realconebob/trem/internal/reminders"
 )
 
 type CLIRes struct {
-	Command   func(string,[]string)error
-	Arguments []string
-	Err       error
+	Command   	func(string,[]string)error
+	Arguments 	[]string
+	Err       	error
+	IsDaemonCmd	bool
 }
 
 func CreateCLIResFromArgs(command string, args []string) CLIRes {
@@ -27,7 +30,7 @@ func CreateCLIResFromArgs(command string, args []string) CLIRes {
 	case "edit":	res.Command = EditReminder
 	case "list":	res.Command = ListReminders
 	case "del":		res.Command = RemoveReminder
-	case "daemon":	res.Command = CommandDaemon
+	case "daemon":	{res.Command = CommandDaemon; res.IsDaemonCmd = true}
 	default:
 		res.Err = errors.New("Unknown command \"" + command + "\"")
 		res.Command = func(_ string, _ []string)error {return errors.New("Got unknown command from CreateCLIResFromArgs")}
@@ -195,5 +198,40 @@ func RemoveReminder(file string, args []string) error {
 }
 
 func CommandDaemon(file string, args []string) error {
-	return errors.New("TODO: main::CommandDaemon is unimplemented")
+	// Need to implement the following commands:
+		// Launch				-> Create a new daemon process in the background
+		// Reload Reminders 	-> d.ReloadReminders()
+		// Reload Config		-> d.ReloadConfig(optional_config_path)
+		// Save Reminders		-> d.SaveReminders(optional_reminder_path)
+		// Pause Notifications	-> d.Pause()
+		// Shutdown Daemon		-> d.Close()
+
+	if len(args) < 1 {return errors.New("No keyword specified")}		// A keyword must be present
+
+	// Fun quirk about go: it evaluates arguments to pass to functions so it can be copied. Therefore, instead of waiting to run
+	// 	the args access after verifying that the length is large enough to prevent a crash, it just crashes. I guess that's what I
+	//  get for trying to subvert the go way of doing things
+	//		On another note: JUST GIVE ME MY DAMN TERNARY OPERATOR GOOGLE. IT MAKES CODE MORE READABLE BY NOT TAKING UP 17 GOD DAMN
+	//		  LINES OF SPACE LIKE HOW YOU MANDATE EVERY IF STATEMENT TO HAVE {}'s! IF A JUNIOR DEV IS ABUSING THEM THEN TELL THE DEV
+	//		  TO KNOCK IT OFF LIKE A NORMAL PERSON. STOP BEING ANTISOCIAL AND MAKING MY PROGRAM CLUTTERED BECAUSE OF IT
+
+	// path := misc.Ternary(len(args) == 2, args[1], "") // grr
+	path := ""
+	if len(args) > 1 {path = args[1]}
+	command := daemon.Command{Path: path}
+
+	switch args[0] {
+	case "launch", "start":					return misc.Ternary(daemon.Launch(args[1:]) == 0, nil, errors.New("Could not launch daemon"))
+	case "rereminder", "reload_reminders":	command.Behavior = daemon.RELOAD_REMINDERS
+	case "reconfig", "reload_config":		command.Behavior = daemon.RELOAD_CONFIG
+	case "savereminder", "save_reminders":	command.Behavior = daemon.SAVE_REMINDERS
+	case "pause", "toggle":					command.Behavior = daemon.PAUSE
+	case "shutdown", "close":				command.Behavior = daemon.SHUTDOWN
+	default:								command.Behavior = daemon.UNKNOWN
+	}
+
+	cmds, err := misc.GetFromGobFile[daemon.Command](file)
+	if err != nil {return err}
+
+	return misc.SerializeToGobFile(append(cmds, command), file, func(_ daemon.Command)bool{return true})
 }
